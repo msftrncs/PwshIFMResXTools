@@ -6,7 +6,7 @@
 .Notes
     The IFM SREC reader is sensitive to file formatting, we had to be careful to not generate blank lines or extra spaces.
     Likewise, this script requires strict formatting in order to detect effectively empty S records.  The SREC file lines must be LF terminated, CR's are optional (for the SREC file).
-    S1, S2 and S3 records are all supported, though S1 and D2 are unlikely to appear in the IFM RESX data blocks currently supported.
+    S1, S2 and S3 records are all supported, though S1 and S2 are unlikely to appear in the IFM RESX data blocks currently supported.
     The data blocks, when read in, are converted from CRLF to LF termination by XMLReader.  This is maintained until the XMLWriter restores the CRLF termination when it writes the file.
 
     Script assembled by:
@@ -25,6 +25,8 @@
 
     TODO:
         Make this script parameterized so it could be used on a command line, possibly just use $args
+        Could use Output-Progress to report on file reduction progress.
+        Finish Comment Based Help.
 #>
 
 $resxSearch = @{
@@ -34,8 +36,6 @@ $resxSearch = @{
     Recurse = $true # specify $true to recurse subfolders, $false to process just specified folder
     Exclude = '* Reduced.resx'
 }
-
-
 
 #this is the regex match to determine block names that possess SREC files stored in Flash
 $srecBlockNameMatch = '(?:^BasicLine_|^)(?:BasicSystem|Bootloader|SISSystem|IECConfig|IECApplication)(?:_|$)'
