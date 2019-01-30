@@ -41,11 +41,11 @@ $resxSearch = @{
 $srecBlockNameMatch = '(?:^BasicLine_|^)(?:BasicSystem|Bootloader|SISSystem|IECConfig|IECApplication)(?:_|$)'
 
 # XMLWriter requires some special settings in order to keep the RESX format as original.
-$xmlSettings = New-Object Xml.XmlWriterSettings
+$xmlSettings = [Xml.XmlWriterSettings]::new()
 $xmlSettings.Indent = $true
 $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 #Set an optional encoding, UTF-8 with BOM is the original RESX format
-$xmlSettings.Encoding = New-Object Text.UTF8Encoding( $true )
+$xmlSettings.Encoding = [Text.UTF8Encoding]::new( $true )
 
 # get a list of files to process, not already named 'reduced'
 foreach ($resxFileName in ( Get-ChildItem @resxSearch -file ) ) {

@@ -18,11 +18,11 @@
 [xml]$ifmresxfile = Get-Content "7509 FRAM ID 14 2018-04-10.resx" -Filter '*.resx' -Exclude "* Repaired.resx"
 
 # XMLWriter requires some special settings in order to keep the RESX format as original.
-$xmlSettings = New-Object Xml.XmlWriterSettings
+$xmlSettings = [Xml.XmlWriterSettings]::new()
 $xmlSettings.Indent = $true
 $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 #Set an optional encoding, UTF-8 with BOM is the original RESX format
-$xmlSettings.Encoding = New-Object Text.UTF8Encoding( $true )
+$xmlSettings.Encoding = [Text.UTF8Encoding]::new( $true )
 
 # 32 bit IntelHex files DATA block names start with 'R360Line_32_', if none exist, skip this file
 if ($ifmresxfile.root.data.name -match '^R360Line_32_') {
