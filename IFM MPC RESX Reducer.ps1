@@ -45,12 +45,12 @@ $xmlSettings = [Xml.XmlWriterSettings]::new()
 $xmlSettings.Indent = $true
 $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 #Set an optional encoding, UTF-8 with BOM is the original RESX format
-$xmlSettings.Encoding = [Text.UTF8Encoding]::new( $true )
+$xmlSettings.Encoding = [Text.UTF8Encoding]::new($true)
 
 # get a list of files to process, not already named 'reduced'
-foreach ($resxFileName in ( Get-ChildItem @resxSearch -file ) ) {
+foreach ($resxFileName in (Get-ChildItem @resxSearch -file)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5") {(get-filehash $resxFileName -algorithm "MD5").hash -ieq (get-content "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5")})) {
+    if ($(if (Test-Path "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5") {(get-filehash $resxFileName -algorithm "MD5").hash -ieq (get-content "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5")} )) {
         # read the RESX file into an XML variable
         [xml]$ifmResxFile = Get-Content $resxFileName
 
@@ -77,7 +77,7 @@ foreach ($resxFileName in ( Get-ChildItem @resxSearch -file ) ) {
             # put the file back out with XMLWriter, as PowerShell seems to lack that support.
             $xmlWriter = [Xml.XmlWriter]::Create("$($resxFileName.DirectoryName)\$($resxFileName.BaseName) Reduced.resx", $xmlSettings)
             try {
-                $ifmResxFile.Save( $xmlWriter )
+                $ifmResxFile.Save($xmlWriter)
             }
             finally {
                 $xmlWriter.Dispose()

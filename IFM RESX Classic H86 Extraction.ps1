@@ -22,7 +22,7 @@ $xmlSettings = [Xml.XmlWriterSettings]::new()
 $xmlSettings.Indent = $true
 $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 #Set an optional encoding, UTF-8 with BOM is the original RESX format
-$xmlSettings.Encoding = [Text.UTF8Encoding]::new( $true )
+$xmlSettings.Encoding = [Text.UTF8Encoding]::new($true)
 
 # 32 bit IntelHex files DATA block names start with 'R360Line_32_', if none exist, skip this file
 if ($ifmresxfile.root.data.name -match '^R360Line_32_') {
