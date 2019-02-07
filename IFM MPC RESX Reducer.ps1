@@ -1,9 +1,13 @@
 ﻿<# 
 .synopsis
-    Reduce the size of IFM Maintenance RESX files on the MPC (Freescale PowerPC, BasicLine) Platforms by filtering out S records which are 'empty'
-.Description
+    Reduce the size of IFM Maintenance RESX files on the MPC (Freescale PowerPC, BasicLine) platforms by filtering out S records which are 'empty'
+.description
     Reduces the size of IFM Maintenance RESX files generated for the MPC platforms (Freescale PowerPC, BasicLine) for the datablocks which represent FLASH memory (BasicSystem|Bootloader|SISSystem|IECConfig|IECApplication) by removing S records which are entirely blank (all data bytes are 0xFF).
-.Notes
+.parameter SearchPath
+    Provides path(s) for which to search for files to reduce.  If the path is a folder, all RESX files in that folder will be reduced.  Only files of type '*.RESX' (not already named '* Reduced.RESX') will be reduced.
+.parameter Recurse
+    Recurses all specified paths (of which are directories, or result in matching directories) in the search for RESX files to reduce.
+.notes
     The IFM SREC reader is sensitive to file formatting, we had to be careful to not generate blank lines or extra spaces.
     Likewise, this script requires strict formatting in order to detect effectively empty S records.  The SREC file lines must be LF terminated, CR's are optional (for the SREC file).
     S1, S2 and S3 records are all supported, though S1 and S2 are unlikely to appear in the IFM RESX data blocks currently supported.
@@ -17,6 +21,9 @@
         2018-08-09 CMM Added -file to Get-ChildItems file search.
         2018-08-10 CMM Added test for presence of MD5 file, gives revised checksum error if not present.  Added setting of XMLWriterSetting to insure output matches original known RESX format.  Changed to writing only LF terminations on the new Base64String formatting as thats how the original input blocks are formatted by the XMLReader.  The XMLWriter will now change them back to CRLF on output.
         2018-08-15 CMM Cleaned up unneeded overwrapped subexpression, code formatting corrections.
+        2019-02-06 CMM Added a SearchPath parameter, and a Recurse switch parameter, and comment based help for the parameters.
+
+        *! PowerShell Core 6.1 or later is required due to '-Filter/-Exclude' issues with Get-ChildItem in Windows PowerShell 5.1 and earlier. !*
 
     Thanks to:
         Many people on StackExchange for existing questions and their answers which assisted with the creation and optimization of this script
@@ -24,18 +31,26 @@
         Various online RegEx Resources including Regular-Expressions.info
 
     TODO:
-        Make this script parameterized so it could be used on a command line, possibly just use $args
         Could use Output-Progress to report on file reduction progress.
         Finish Comment Based Help.
 #>
 
-$resxSearch = @{
-    # to specify the current working directory in the path below, use '.', do not use wildcards here
-    Path    = 'Z:\Programming\CoDeSys V2.3\Projects\'
-    Filter  = '*.resx'
-    Recurse = $true # specify $true to recurse subfolders, $false to process just specified folder
-    Exclude = '* Reduced.resx'
-}
+Param(
+    # Specifies a path to one or more locations to search for ResX files. Wildcards are permitted.
+    [Parameter(Mandatory = $true,
+        Position = 0,
+        ParameterSetName = "Default",
+        ValueFromPipeline = $true,
+        ValueFromPipelineByPropertyName = $true,
+        HelpMessage = "Path to one or more locations.")]
+    [ValidateNotNullOrEmpty()]
+    [SupportsWildcards()]
+    [string[]] $SearchPath,
+
+    # Recurse the path(s) to find files.
+    [Parameter(HelpMessage = "Recurses the path(s) when searching, if the paths are folders.")]
+    [switch] $Recurse
+)
 
 #this is the regex match to determine block names that possess SREC files stored in Flash
 $srecBlockNameMatch = '(?:^BasicLine_|^)(?:BasicSystem|Bootloader|SISSystem|IECConfig|IECApplication)(?:_|$)'
@@ -48,7 +63,7 @@ $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 $xmlSettings.Encoding = [Text.UTF8Encoding]::new($true)
 
 # get a list of files to process, not already named 'reduced'
-foreach ($resxFileName in (Get-ChildItem @resxSearch -file)) {
+foreach ($resxFileName in (get-item $SearchPath | Get-ChildItem -File -Filter '*.resx' -Exclude '* Reduced.resx' -Recurse:$Recurse.IsPresent)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
     if ($(if (Test-Path "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5") {(get-filehash $resxFileName -algorithm "MD5").hash -ieq (get-content "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5")} )) {
         # read the RESX file into an XML variable
