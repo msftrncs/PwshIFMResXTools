@@ -89,7 +89,7 @@ foreach ($resxFileName in (get-item $SearchPath | Get-ChildItem -File -Filter '*
                 "...Reduced block '$($datablock.name)' by $($orgDataLength - $datablock.value.Length) bytes."
             }
 
-            # put the file back out with XMLWriter, as PowerShell seems to lack that support.
+            # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
             $xmlWriter = [Xml.XmlWriter]::Create("$($resxFileName.DirectoryName)\$($resxFileName.BaseName) Reduced.resx", $xmlSettings)
             try {
                 $ifmResxFile.Save($xmlWriter)
