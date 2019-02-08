@@ -3,7 +3,9 @@ PowerShell tools (scripts) for manipulating RESX files from IFM's Maintenance to
 
 ## IFM MPC RESX Reducer.ps1
 Reduce the size of a RESX file for the IFM BasicLine series of modules, by removing unnecessary memory records.
-- currently alter the $resxSearch hashtable's Path element, and optionally Recurse to specify the desired folder to search for RESX files to reduce, optionally recursing subfolders.
+- The script accepts two parameters.
+  - SearchPath - Accepts a list of wildcard paths to search for RESX files to reduce.  The pipeline may also be used to supply this parameter with file path arguments.
+  - Recurse - A switch to recurse the specified paths.
 - Reduced files (or files attempted to be reduced) will have appended to their name ' Reduced' in the same location.
 
 ## IFM RESX Classic H86 Extraction.ps1

@@ -5,7 +5,7 @@
 
 # example of extracting an H86 file from a RESX from the IFM Maintenance tool
 # This example is fixed, to extract the data block whose name starts with 'R360Line_32_EEPROMData', and applies a correction where the
-# Maintenance H86 generator failed to properly terminate the lines before deing encoded in the RESX file.
+# Maintenance H86 generator failed to properly terminate the lines before being encoded in the RESX file.
 
 ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((([xml](Get-Content "7509 FRAM ID 14 2018-04-10.resx")).root.data | Where-Object name -match '^R360Line_32_EEPROMData(?:_|$)').value))) -replace '[^:\r\n]+(?=:)', "`$0`r`n" | Set-Content "7509 FRAM ID 14 2018-04-10.H86"
 
@@ -39,8 +39,8 @@ if ($ifmresxfile.root.data.name -match '^R360Line_32_') {
             ) -replace '.{1,80}', "`r`n        `$&") + "`r`n"
     }
 
-    # put the file back out with XMLWriter, as PowerShell seems to lack that support.
-    $xmlWriter = [Xml.XmlWriter]::Create("C:\Users\cmorris.DOMAIN\desktop\7509 FRAM ID 14 2018-04-10 Repaired.resx", $xmlSettings)
+    # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
+    $xmlWriter = [Xml.XmlWriter]::Create("7509 FRAM ID 14 2018-04-10 Repaired.resx", $xmlSettings)
     try {
         $ifmResxFile.Save( $xmlWriter )
     }
