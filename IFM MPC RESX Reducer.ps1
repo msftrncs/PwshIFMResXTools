@@ -7,6 +7,8 @@
     Provides path(s) for which to search for files to reduce.  If the path is a folder, all RESX files in that folder will be reduced.  Only files of type '*.RESX' (not already named '* Reduced.RESX') will be reduced.
 .parameter Recurse
     Recurses all specified paths (of which are directories, or result in matching directories) in the search for RESX files to reduce.
+.parameter Depth
+    Used with -Recurse, limits the depth of recursion.
 .notes
     The IFM SREC reader is sensitive to file formatting, we had to be careful to not generate blank lines or extra spaces.
     Likewise, this script requires strict formatting in order to detect effectively empty S records.  The SREC file lines must be LF terminated, CR's are optional (for the SREC file).
@@ -22,6 +24,7 @@
         2018-08-10 CMM Added test for presence of MD5 file, gives revised checksum error if not present.  Added setting of XMLWriterSetting to insure output matches original known RESX format.  Changed to writing only LF terminations on the new Base64String formatting as thats how the original input blocks are formatted by the XMLReader.  The XMLWriter will now change them back to CRLF on output.
         2018-08-15 CMM Cleaned up unneeded overwrapped subexpression, code formatting corrections.
         2019-02-06 CMM Added a SearchPath parameter, and a Recurse switch parameter, and comment based help for the parameters.
+        2019-02-13 CMM Added Depth parameter to limit recursion, added alias 'Path' to SearchPath parameter, parameter type was [string[]]
 
         *! PowerShell Core 6.1 or later is required due to '-Filter/-Exclude' issues with Get-ChildItem in Windows PowerShell 5.1 and earlier. !*
 
@@ -34,26 +37,47 @@
         Could use Output-Progress to report on file reduction progress.
         Finish Comment Based Help.
 #>
-
+[CmdletBinding(PositionalBinding = $false)]
 Param(
     # Specifies a path to one or more locations to search for ResX files. Wildcards are permitted.
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
         Position = 0,
-        ParameterSetName = "Default",
+        ParameterSetName = 'Default',
         ValueFromPipeline = $true,
         ValueFromPipelineByPropertyName = $true,
-        HelpMessage = "Path to one or more locations.")]
-    [ValidateNotNullOrEmpty()]
-    [SupportsWildcards()]
-    [string[]] $SearchPath,
+        HelpMessage = 'Path to one or more locations.')]
+    #    [ValidateNotNullOrEmpty()]
+    #    [SupportsWildcards()]
+    [Alias('Path')]
+    [object[]] $SearchPath = '.',
 
     # Recurse the path(s) to find files.
-    [Parameter(HelpMessage = "Recurses the path(s) when searching, if the paths are folders.")]
-    [switch] $Recurse
+    [Parameter(HelpMessage = 'Recurses the path(s) when searching, if the paths are folders.')]
+    [switch] $Recurse,
+
+    # Recurse the path(s) to find files.
+    [Parameter(HelpMessage = 'Limits the depth of recursion.')]
+    [uint32] $Depth
 )
 
 #this is the regex match to determine block names that possess SREC files stored in Flash
 $srecBlockNameMatch = '(?:^BasicLine_|^)(?:BasicSystem|Bootloader|SISSystem|IECConfig|IECApplication)(?:_|$)'
+
+# create a dictionary of parameters for the Get-ChildItem cmdlet that will search out the RESX files.
+$gci_args = @{ 
+    File    = $true
+    Filter  = '*.resx'
+    Exclude = '* Reduced.resx'
+}
+
+if ($Recurse.IsPresent) {
+    $gci_args += @{Recurse = $true}
+}
+if ($PSBoundParameters.ContainsKey('Depth')) {
+    $gci_args += @{Depth = $Depth}
+}
+
+$depth
 
 # XMLWriter requires some special settings in order to keep the RESX format as original.
 $xmlSettings = [Xml.XmlWriterSettings]::new()
@@ -63,18 +87,18 @@ $xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
 $xmlSettings.Encoding = [Text.UTF8Encoding]::new($true)
 
 # get a list of files to process, not already named 'reduced'
-foreach ($resxFileName in (get-item $SearchPath | Get-ChildItem -File -Filter '*.resx' -Exclude '* Reduced.resx' -Recurse:$Recurse.IsPresent)) {
+foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5") {(get-filehash $resxFileName -algorithm "MD5").hash -ieq (get-content "$($resxFileName.DirectoryName)\$($resxFileName.BaseName).md5")} )) {
+    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") {(get-filehash $resxFile -algorithm "MD5").hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")} )) {
         # read the RESX file into an XML variable
-        [xml]$ifmResxFile = Get-Content $resxFileName
+        [xml]$ifmResxContent = Get-Content $resxFile
 
         # only process files that possess an SREC file
-        if ($ifmResxFile.root.data.name -match $srecBlockNameMatch) {
-            $resxFileName.FullName # indicate the file we're processing
+        if ($ifmResxContent.root.data.name -match $srecBlockNameMatch) {
+            $resxFile.FullName # indicate the file we're processing
 
             # find each data block we believe we can process because it is believed to contain an SREC file
-            foreach ($datablock in ($ifmResxFile.root.data | Where-Object name -match $srecBlockNameMatch)) {
+            foreach ($datablock in ($ifmResxContent.root.data | Where-Object name -match $srecBlockNameMatch)) {
                 #(([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($datablock.value)) -split "`r`n") -match "S3.{10}(FF)+..$").count
 
                 $orgDataLength = $datablock.value.Length
@@ -90,19 +114,19 @@ foreach ($resxFileName in (get-item $SearchPath | Get-ChildItem -File -Filter '*
             }
 
             # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
-            $xmlWriter = [Xml.XmlWriter]::Create("$($resxFileName.DirectoryName)\$($resxFileName.BaseName) Reduced.resx", $xmlSettings)
+            $xmlWriter = [Xml.XmlWriter]::Create("$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx", $xmlSettings)
             try {
-                $ifmResxFile.Save($xmlWriter)
+                $ifmResxContent.Save($xmlWriter)
             }
             finally {
                 $xmlWriter.Dispose()
             }
             # generate the hash file for the rebuilt RESX file
-            Set-Content "$($resxFileName.DirectoryName)\$($resxFileName.BaseName) Reduced.md5" (get-filehash "$($resxFileName.DirectoryName)\$($resxFileName.BaseName) Reduced.resx" -algorithm "MD5").hash.ToLowerInvariant()
+            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (get-filehash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -algorithm "MD5").hash.ToLowerInvariant()
         }
     }
     else {
-        Write-Error "Source file '$($resxFileName.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"
+        Write-Error "Source file '$($resxFile.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"
     }
 }
 
