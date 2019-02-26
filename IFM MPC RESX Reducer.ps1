@@ -55,7 +55,7 @@ Param(
     [Parameter(HelpMessage = 'Recurses the path(s) when searching, if the paths are folders.')]
     [switch] $Recurse,
 
-    # Recurse the path(s) to find files.
+    # Depth of recursion allowed to find files.
     [Parameter(HelpMessage = 'Limits the depth of recursion.')]
     [uint32] $Depth
 )
@@ -97,10 +97,8 @@ foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | G
         if ($ifmResxContent.root.data.name -match $srecBlockNameMatch) {
             $resxFile.FullName # indicate the file we're processing
 
-            # find each data block we believe we can process because it is believed to contain an SREC file
+            # find each data block we believe we can process because it possesses an SREC file believed to be stored in Flash
             foreach ($datablock in ($ifmResxContent.root.data | Where-Object name -match $srecBlockNameMatch)) {
-                #(([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($datablock.value)) -split "`r`n") -match "S3.{10}(FF)+..$").count
-
                 $orgDataLength = $datablock.value.Length
                 # convert reduced result back to Base64String
                 $datablock.value = ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
@@ -129,11 +127,3 @@ foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | G
         Write-Error "Source file '$($resxFile.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"
     }
 }
-
-<# ))) |  ##  The -replace operator (-replace '.{1,80}', "`r`n        `$&") is much more effective than the below code loop was.   ##
-# reformat the newly generated Base64String to match the RESX formatting, note the use of ForEach-Object even though there is only one object at this point, a Base64String
-ForEach-Object -Begin {$datablock.value = "`r`n"} {
-    for ( $i = 0; $i -lt $_.length; $i += 80 ) {
-        $datablock.value += "        $(if (($i + 80) -lt $_.length) {$_.substring($i, 80)} else {$_.substring($i)})`r`n"
-    }
-} #>
