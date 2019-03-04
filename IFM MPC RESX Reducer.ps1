@@ -52,11 +52,9 @@ Param(
     [object[]] $SearchPath = '.',
 
     # Recurse the path(s) to find files.
-    [Parameter(HelpMessage = 'Recurses the path(s) when searching, if the paths are folders.')]
     [switch] $Recurse,
 
     # Depth of recursion allowed to find files.
-    [Parameter(HelpMessage = 'Limits the depth of recursion.')]
     [uint32] $Depth
 )
 
