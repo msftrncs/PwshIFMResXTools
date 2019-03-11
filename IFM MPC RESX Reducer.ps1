@@ -78,16 +78,16 @@ if ($PSBoundParameters.ContainsKey('Depth')) {
 $depth
 
 # XMLWriter requires some special settings in order to keep the RESX format as original.
-$xmlSettings = [Xml.XmlWriterSettings]::new()
-$xmlSettings.Indent = $true
-$xmlSettings.NewLineChars = "`r`n" # original RESX format had CRLF
-#Set an optional encoding, UTF-8 with BOM is the original RESX format
-$xmlSettings.Encoding = [Text.UTF8Encoding]::new($true)
+$xmlSettings = [Xml.XmlWriterSettings]@{
+    Indent       = $true
+    NewLineChars = "`r`n" # original RESX format had CRLF
+    Encoding     = [Text.UTF8Encoding]::new($true) # Set an optional encoding, UTF-8 with BOM is the original RESX format
+}
 
 # get a list of files to process, not already named 'reduced'
 foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") {(get-filehash $resxFile -algorithm "MD5").hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")} )) {
+    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") {(get-filehash $resxFile -algorithm MD5).hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")} )) {
         # read the RESX file into an XML variable
         [xml]$ifmResxContent = Get-Content $resxFile
 
@@ -118,7 +118,7 @@ foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | G
                 $xmlWriter.Dispose()
             }
             # generate the hash file for the rebuilt RESX file
-            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (get-filehash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -algorithm "MD5").hash.ToLowerInvariant()
+            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (get-filehash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -algorithm MD5).hash.ToLowerInvariant()
         }
     }
     else {
