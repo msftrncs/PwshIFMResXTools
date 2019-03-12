@@ -69,10 +69,10 @@ $gci_args = @{
 }
 
 if ($Recurse.IsPresent) {
-    $gci_args += @{Recurse = $true}
+    $gci_args.Recurse = $true
 }
 if ($PSBoundParameters.ContainsKey('Depth')) {
-    $gci_args += @{Depth = $Depth}
+    $gci_args.Depth = $Depth
 }
 
 $depth
