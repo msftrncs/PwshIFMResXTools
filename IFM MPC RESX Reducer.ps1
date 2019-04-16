@@ -75,8 +75,6 @@ if ($PSBoundParameters.ContainsKey('Depth')) {
     $gci_args.Depth = $Depth
 }
 
-$depth
-
 # XMLWriter requires some special settings in order to keep the RESX format as original.
 $xmlSettings = [Xml.XmlWriterSettings]@{
     Indent       = $true
@@ -85,9 +83,9 @@ $xmlSettings = [Xml.XmlWriterSettings]@{
 }
 
 # get a list of files to process, not already named 'reduced'
-foreach ($resxFile in (get-item $(if ($SearchPath) {$SearchPath} else {'.'}) | Get-ChildItem @gci_args)) {
+foreach ($resxFile in (get-item $(if ($SearchPath) { $SearchPath } else { '.' }) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") {(get-filehash $resxFile -algorithm MD5).hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")} )) {
+    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") { (get-filehash $resxFile -algorithm MD5).hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") } )) {
         # read the RESX file into an XML variable
         [xml]$ifmResxContent = Get-Content $resxFile
 
