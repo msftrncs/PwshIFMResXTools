@@ -25,6 +25,8 @@
         2018-08-15 CMM Cleaned up unneeded overwrapped subexpression, code formatting corrections.
         2019-02-06 CMM Added a SearchPath parameter, and a Recurse switch parameter, and comment based help for the parameters.
         2019-02-13 CMM Added Depth parameter to limit recursion, added alias 'Path' to SearchPath parameter, parameter type was [string[]]
+        2019-04-30 CMM Reverted parameter type to [string[]], clean up attributes.
+        2019-05-01 CMM Added PSDefaultValue attribute to $SearchPath, behaves like Get-ChildItem in Help.
 
         *! PowerShell Core 6.1 or later is required due to '-Filter/-Exclude' issues with Get-ChildItem in Windows PowerShell 5.1 and earlier. !*
 
@@ -40,16 +42,11 @@
 [CmdletBinding(PositionalBinding = $false)]
 Param(
     # Specifies a path to one or more locations to search for ResX files. Wildcards are permitted.
-    [Parameter(Mandatory = $false,
-        Position = 0,
-        ParameterSetName = 'Default',
-        ValueFromPipeline = $true,
-        ValueFromPipelineByPropertyName = $true,
-        HelpMessage = 'Path to one or more locations.')]
-    #    [ValidateNotNullOrEmpty()]
-    #    [SupportsWildcards()]
+    [Parameter(Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
     [Alias('Path')]
-    [object[]] $SearchPath = '.',
+    [SupportsWildCards()]
+    [PSDefaultValue(Help='Current directory')]
+    [string[]] $SearchPath = '.',
 
     # Recurse the path(s) to find files.
     [switch] $Recurse,
@@ -83,9 +80,9 @@ $xmlSettings = [Xml.XmlWriterSettings]@{
 }
 
 # get a list of files to process, not already named 'reduced'
-foreach ($resxFile in (get-item $(if ($SearchPath) { $SearchPath } else { '.' }) | Get-ChildItem @gci_args)) {
+foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' }) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") { (get-filehash $resxFile -algorithm MD5).hash -ieq (get-content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") } )) {
+    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") { (Get-FileHash $resxFile -Algorithm MD5).hash -ieq (Get-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") } )) {
         # read the RESX file into an XML variable
         [xml]$ifmResxContent = Get-Content $resxFile
 
@@ -94,7 +91,7 @@ foreach ($resxFile in (get-item $(if ($SearchPath) { $SearchPath } else { '.' })
             $resxFile.FullName # indicate the file we're processing
 
             # find each data block we believe we can process because it possesses an SREC file believed to be stored in Flash
-            foreach ($datablock in ($ifmResxContent.root.data | Where-Object name -match $srecBlockNameMatch)) {
+            foreach ($datablock in ($ifmResxContent.root.data | Where-Object name -Match $srecBlockNameMatch)) {
                 $orgDataLength = $datablock.value.Length
                 # convert reduced result back to Base64String
                 $datablock.value = ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
@@ -116,7 +113,7 @@ foreach ($resxFile in (get-item $(if ($SearchPath) { $SearchPath } else { '.' })
                 $xmlWriter.Dispose()
             }
             # generate the hash file for the rebuilt RESX file
-            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (get-filehash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -algorithm MD5).hash.ToLowerInvariant()
+            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).hash.ToLowerInvariant()
         }
     }
     else {
