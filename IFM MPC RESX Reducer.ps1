@@ -45,7 +45,7 @@ Param(
     [Parameter(Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
     [Alias('Path')]
     [SupportsWildCards()]
-    [PSDefaultValue(Help='Current directory')]
+    [PSDefaultValue(Help = 'Current directory')]
     [string[]] $SearchPath = '.',
 
     # Recurse the path(s) to find files.
@@ -108,15 +108,13 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
             $xmlWriter = [Xml.XmlWriter]::Create("$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx", $xmlSettings)
             try {
                 $ifmResxContent.Save($xmlWriter)
-            }
-            finally {
+            } finally {
                 $xmlWriter.Dispose()
             }
             # generate the hash file for the rebuilt RESX file
             Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).hash.ToLowerInvariant()
         }
-    }
-    else {
+    } else {
         Write-Error "Source file '$($resxFile.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"
     }
 }
