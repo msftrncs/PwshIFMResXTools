@@ -7,7 +7,11 @@
 # This example is fixed, to extract the data block whose name starts with 'R360Line_32_EEPROMData', and applies a correction where the
 # Maintenance H86 generator failed to properly terminate the lines before being encoded in the RESX file.
 
-([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((([xml](Get-Content "7509 FRAM ID 14 2018-04-10.resx")).root.data | Where-Object name -match '^R360Line_32_EEPROMData(?:_|$)').value))) -replace '[^:\r\n]+(?=:)', "`$0`r`n" | Set-Content "7509 FRAM ID 14 2018-04-10.H86"
+([Text.Encoding]::UTF8.GetString(
+        [Convert]::FromBase64String(
+            (([xml](Get-Content "7509 FRAM ID 14 2018-04-10.resx")).root.data |
+                    Where-Object name -match '^R360Line_32_EEPROMData(?:_|$)').value
+        ))) -replace '(?=:)(?<!\n|^)', "`r`n" | Set-Content "7509 FRAM ID 14 2018-04-10.H86"
 
 # in order to restrict to only FRAM, we have to find the data block who's name starts with 'R360Line_32_EEPROMData'
 
@@ -34,7 +38,7 @@ if ($ifmresxfile.root.data.name -match '^R360Line_32_') {
                     # convert from Base64String to a string
                     [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($datablock.value)
                         # add CRLF before ':' where missing
-                    ) -replace '[^:\r\n]+(?=:)', "`$0`r`n")
+                    ) -replace '(?=:)(?<!\n|^)', "`r`n")
                 # take the new Base64String and break it into 80 character lines formatted as assumed for the RESX file
             ) -replace '.{1,80}', "`r`n        `$&") + "`r`n"
     }
