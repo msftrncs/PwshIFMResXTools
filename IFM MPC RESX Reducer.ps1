@@ -28,7 +28,7 @@
         2019-04-30 CMM Reverted parameter type to [string[]], clean up attributes.
         2019-05-01 CMM Added PSDefaultValue attribute to $SearchPath, behaves like Get-ChildItem in Help.
 
-        *! PowerShell Core 6.1 or later is required due to '-Filter/-Exclude' issues with Get-ChildItem in Windows PowerShell 5.1 and earlier. !*
+        *! PowerShell Core 6.1 or later may be required due to '-Filter/-Exclude' issues with Get-ChildItem in Windows PowerShell 5.1 and earlier. !*
 
     Thanks to:
         Many people on StackExchange for existing questions and their answers which assisted with the creation and optimization of this script
@@ -82,26 +82,28 @@ $xmlSettings = [Xml.XmlWriterSettings]@{
 # get a list of files to process, not already named 'reduced'
 foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' }) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ($(if (Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") { (Get-FileHash $resxFile -Algorithm MD5).hash -ieq (Get-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") } )) {
+    if ((Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") -and 
+            (Get-FileHash $resxFile -Algorithm MD5).Hash -ieq (Get-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")
+        ) {
         # read the RESX file into an XML variable
         [xml]$ifmResxContent = Get-Content $resxFile
 
         # only process files that possess an SREC file
-        if ($ifmResxContent.root.data.name -match $srecBlockNameMatch) {
-            $resxFile.FullName # indicate the file we're processing
+        if ($ifmResxContent.'root'.'data'.'name' -match $srecBlockNameMatch) {
+            "Reducing $($resxFile.FullName)..." # indicate the file we're processing
 
             # find each data block we believe we can process because it possesses an SREC file believed to be stored in Flash
-            foreach ($datablock in ($ifmResxContent.root.data | Where-Object name -Match $srecBlockNameMatch)) {
-                $orgDataLength = $datablock.value.Length
+            foreach ($datablock in $ifmResxContent.'root'.'data'.where{$_.'name' -match $srecBlockNameMatch}) {
+                $orgDataLength = $datablock.'value'.Length
                 # convert reduced result back to Base64String
-                $datablock.value = ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
+                $datablock.'value' = ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
                             # convert from Base64String
-                            [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($datablock.value)
+                            [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($datablock.'value')
                                 # remove effectively empty S3, S2, or S1 DATA records
                             ) -replace 'S(?:(?:3.{4})|(?:2..)|(?:1)).{6}(?:FF)+..\r*\n')
                         # take the new Base64String and break it into 80 character lines formatted as assumed for the RESX file
                     ) -replace '.{1,80}', "`n        `$&") + "`n"
-                "...Reduced block '$($datablock.name)' by $($orgDataLength - $datablock.value.Length) bytes."
+                "...Reduced block '$($datablock.'name')' by $($orgDataLength - $datablock.'value'.Length) bytes."
             }
 
             # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
@@ -112,7 +114,8 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
                 $xmlWriter.Dispose()
             }
             # generate the hash file for the rebuilt RESX file
-            Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).hash.ToLowerInvariant()
+            (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).Hash.ToLowerInvariant() |
+                Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" 
         }
     } else {
         Write-Error "Source file '$($resxFile.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"
