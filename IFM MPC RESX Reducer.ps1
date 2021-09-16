@@ -107,11 +107,11 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
             }
 
             # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
-            $xmlWriter = [Xml.XmlWriter]::Create("$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx", $xmlSettings)
             try {
+                $xmlWriter = [Xml.XmlWriter]::Create("$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx", $xmlSettings)
                 $ifmResxContent.Save($xmlWriter)
             } finally {
-                $xmlWriter.Dispose()
+                if ($xmlWriter) { $xmlWriter.Dispose() }
             }
             # generate the hash file for the rebuilt RESX file
             (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).Hash.ToLowerInvariant() |
