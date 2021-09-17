@@ -96,13 +96,13 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
             foreach ($datablock in $ifmResxContent.'root'.'data'.where{$_.'name' -match $srecBlockNameMatch}) {
                 $orgDataLength = $datablock.'value'.Length
                 # convert reduced result back to Base64String
-                $datablock.'value' = ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
-                            # convert from Base64String
-                            [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($datablock.'value')
-                                # remove effectively empty S3, S2, or S1 DATA records
-                            ) -replace 'S(?:(?:3.{4})|(?:2..)|(?:1)).{6}(?:FF)+..\r*\n')
-                        # take the new Base64String and break it into 80 character lines formatted as assumed for the RESX file
-                    ) -replace '.{1,80}', "`n        `$&") + "`n"
+                $datablock.'value' = "$(([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
+                                        # convert from Base64String
+                                        [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($datablock.'value')
+                                            # remove effectively empty S3, S2, or S1 DATA records
+                                        ) -replace 'S(?:(?:3.{4})|(?:2..)|(?:1)).{6}(?:FF)+..\r*\n')
+                                    # take the new Base64String and break it into 80 character lines formatted as assumed for the RESX file
+                                ) -replace '.{1,80}', "`n        `$&"))`n"
                 "...Reduced block '$($datablock.'name')' by $($orgDataLength - $datablock.'value'.Length) bytes."
             }
 
