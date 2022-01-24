@@ -82,8 +82,8 @@ $xmlSettings = [Xml.XmlWriterSettings]@{
 # get a list of files to process, not already named 'reduced'
 foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' }) | Get-ChildItem @gci_args)) {
     # we should check the MD5 file to see if the hash matches before continuing to process the file.
-    if ((Test-Path "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5") -and 
-            (Get-FileHash $resxFile -Algorithm MD5).Hash -ieq (Get-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName).md5")
+    if ((Test-Path ($resxFileMd5FileName = $resxFile.Directory | Join-Path -ChildPath "$($resxFile.BaseName).md5")) -and 
+            (Get-FileHash $resxFile -Algorithm MD5).Hash -ieq (Get-Content $resxFileMd5FileName)
         ) {
         # read the RESX file into an XML variable
         [xml]$ifmResxContent = Get-Content $resxFile
@@ -93,7 +93,7 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
             "Reducing $($resxFile.FullName)..." # indicate the file we're processing
 
             # find each data block we believe we can process because it possesses an SREC file believed to be stored in Flash
-            foreach ($datablock in $ifmResxContent.'root'.'data'.where{$_.'name' -match $srecBlockNameMatch}) {
+            foreach ($datablock in $ifmResxContent.'root'.'data'.Where{$_.'name' -match $srecBlockNameMatch}) {
                 $orgDataLength = $datablock.'value'.Length
                 # convert reduced result back to Base64String
                 $datablock.'value' = "$(([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
@@ -106,16 +106,17 @@ foreach ($resxFile in (Get-Item $(if ($SearchPath) { $SearchPath } else { '.' })
                 "...Reduced block '$($datablock.'name')' by $($orgDataLength - $datablock.'value'.Length) bytes."
             }
 
-            # put the file back out with XMLWriter, as PowerShell seems to lack integral XML object output support.
+            # put the file back out with XMLWriter, to use settings specifically matching the original.
+            $resxFileReducedFileName = $resxFile.Directory | Join-Path -ChildPath "$($resxFile.BaseName) Reduced"
             try {
-                $xmlWriter = [Xml.XmlWriter]::Create("$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx", $xmlSettings)
+                $xmlWriter = [Xml.XmlWriter]::Create("$($resxFileReducedFileName).resx", $xmlSettings)
                 $ifmResxContent.Save($xmlWriter)
             } finally {
                 if ($xmlWriter) { $xmlWriter.Dispose() }
             }
             # generate the hash file for the rebuilt RESX file
-            (Get-FileHash "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.resx" -Algorithm MD5).Hash.ToLowerInvariant() |
-                Set-Content "$($resxFile.DirectoryName)\$($resxFile.BaseName) Reduced.md5" 
+            (Get-FileHash "$($resxFileReducedFileName).resx" -Algorithm MD5).Hash.ToLowerInvariant() |
+                Set-Content "$($resxFileReducedFileName).md5" 
         }
     } else {
         Write-Error "Source file '$($resxFile.FullName)' failed integrity check! Checksum failed, or checksum file is missing!"

@@ -9,7 +9,7 @@
 
 ([Text.Encoding]::UTF8.GetString(
             [Convert]::FromBase64String(
-                (([xml](Get-Content "7509 FRAM ID 14 2018-04-10.resx")).'root'.'data'.where{
+                (([xml](Get-Content "7509 FRAM ID 14 2018-04-10.resx")).'root'.'data'.Where{
                         $_.'name' -match '^R360Line_32_EEPROMData(?:_|$)' }).'value'))
     ) -replace '(?=:)(?<!\n|^)', "`r`n" | Set-Content "7509 FRAM ID 14 2018-04-10.H86"
 
@@ -35,7 +35,7 @@ if ((Test-Path "7509 FRAM ID 14 2018-04-10 Repaired.md5") -and
     # 32 bit IntelHex files DATA block names start with 'R360Line_32_', if none exist, skip this file
     if ($ifmresxfile.'root'.'data'.'name' -match '^R360Line_32_') {
         # not really sure why, but the CR0020 is considered 16 bit segmented, but DATA blocks still start with 'R360Line_32_', probably because they both use the same H86 format
-        foreach ($datablock in $ifmresxfile.'root'.'data'.where{ $_.'name' -match '^R360Line_32_' }) {
+        foreach ($datablock in $ifmresxfile.'root'.'data'.Where{ $_.'name' -match '^R360Line_32_' }) {
             "...Repairing block '$($datablock.'name')'"
             # convert result back to Base64String in the original RESX formatting
             $datablock.'value' = "$(([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(
